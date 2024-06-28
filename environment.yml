@@ -1,4 +1,4 @@
-name: template
+name: gpt2-prot
 channels:
 - conda-forge
 dependencies:
