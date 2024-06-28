@@ -1,0 +1,48 @@
+# lightning.pytorch==2.3.0
+seed_everything: 0
+ckpt_path: last  # Loads the most recent checkpoint in `checkpoints/`
+
+trainer:
+  max_epochs: 1000
+  log_every_n_steps: 25
+  fast_dev_run: false
+  enable_checkpointing: true
+  logger:
+    - class_path: lightning.pytorch.loggers.TensorBoardLogger
+      init_args:
+        save_dir: "."
+  callbacks: 
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        dirpath: "checkpoints/"  # Needs to be set for ckpt_path to correctly load `last`
+        save_last: true
+    - class_path: PreviewCallback
+      init_args:
+        mode: "aa"
+        prompt: "M"
+        length: 75
+
+model:
+  config:
+    vocab_size: 24
+    window_size: 512
+    n_layers: 4
+    n_heads: 4
+    embed_d: 512
+    emb_dropout: 0.1
+    attn_dropout: 0.1
+    res_dropout: 0.1
+    adam_lr: 0.0003
+    adam_weight_decay: 0.1
+    adam_betas: [0.90, 0.95]
+
+data:
+  mode: "aa"
+  directory: "seqs/"
+  batch_size: 16
+  max_seq_length: 500
+  n_seq_limit: 5000
+  loader_num_workers: 2
+  downloads: [
+    ["https://rest.uniprot.org/uniprotkb/stream?compressed=true&format=fasta&query=%28gene%3Acas9%29", "uniprot_cas9.fasta.gz"]
+  ]
