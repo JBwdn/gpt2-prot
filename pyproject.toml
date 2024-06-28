@@ -3,20 +3,29 @@ requires = [ "setuptools>=61",]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "template"
+name = "gpt2_prot"
 version = "0.1"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "biopython",
+    "jsonargparse[signatures]>=4.27.7",
+    "lightning",
+    "numpy",
+    "requests",
+    "tensorboard",
+    "torch",
+    "tqdm",
+]
 dynamic = []
 
 [project.urls]
-Homepage = "https://github.com/JBwdn/python_template"
+Homepage = "https://github.com/JBwdn/gpt2-prot"
 
 [project.scripts]
-demo-script = "package.scripts.demo:main"
+gpt2-prot = "gpt2_prot.scripts.cli:main"
 
 [project.optional-dependencies]
-dev = [ "black", "isort", "pre-commit", "pylint", "pyright", "pytest",]
+dev = [ "black", "ipython", "isort", "pre-commit", "pylint", "pyright", "pytest",]
 test = [ "pytest",]
 
 [tool.pylint]
