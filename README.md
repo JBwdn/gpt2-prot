@@ -3,6 +3,8 @@ General purpose template for installable python projects
 
 ## Todo
 
+- [x] Add config recipes for eg. foundation model training, specific protein modelling etc.
+- [ ] Run and save weights of recipes, evidence training in readme
 - [ ] Add github actions (testing, deployment, publishing)
 
 ## Installation
