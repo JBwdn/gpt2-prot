@@ -23,9 +23,9 @@ jobs:
         path: dist/
   publish:
     name: Publish package to pypi
-    if: startsWith(github.ref, 'refs/tags/')  # only publish to PyPI on tag pushes
+    if: startsWith(github.ref, 'refs/tags/')
     needs:
-    - build:
+    - build
     runs-on: ubuntu-latest
     environment:
       name: pypi
