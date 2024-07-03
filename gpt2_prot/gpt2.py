@@ -1,14 +1,19 @@
-from dataclasses import dataclass
+"""
+General purpose GPT2 implementation in pytorch lightning.
+"""
+
 from math import sqrt
+from typing import NamedTuple
 
 import lightning as L
 import torch
-import torch.nn as nn
+from torch import nn
 from torch.nn import functional as F
 
 
-@dataclass
-class GPT2Config:
+class GPT2Config(NamedTuple):
+    """Hyperparameters for GPT2."""
+
     vocab_size: int
     window_size: int
 
@@ -26,6 +31,20 @@ class GPT2Config:
 
 
 class TransformerBlock(nn.Module):
+    """
+    Decoder only GPT2 transformer block.
+
+    Params:
+        embed_d (int): Internal embedding dimension.
+        n_heads (int): Number of attention heads.
+        attn_dropout (float): Dropout rate for attention weights.
+        res_dropout (float): Dropout rate for residual connections.
+    Returns:
+        None
+    """
+
+    # pylint: disable=too-few-public-methods
+
     def __init__(
         self,
         embed_d: int,
@@ -37,9 +56,7 @@ class TransformerBlock(nn.Module):
 
         self.ln1 = nn.LayerNorm(embed_d)
         self.qkv = nn.Linear(embed_d, 3 * embed_d)
-        self.attn = nn.MultiheadAttention(
-            embed_d, n_heads, attn_dropout, batch_first=True
-        )
+        self.attn = nn.MultiheadAttention(embed_d, n_heads, attn_dropout, batch_first=True)
         self.ln2 = nn.LayerNorm(embed_d)
         self.mlp = nn.Sequential(
             nn.Linear(embed_d, 4 * embed_d),
@@ -49,20 +66,32 @@ class TransformerBlock(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass through the transformer block."""
         q, k, v = self.qkv(self.ln1(x)).split(self.ln1.normalized_shape[0], dim=2)
         mask = self._lookahead_mask(x.size(1)) if self.training else None
-        x = x + self.attn(q, k, v, attn_mask=mask)[0]
+        x_, _ = self.attn(q, k, v, attn_mask=mask, need_weights=False)
+        x = x + x_
         x = x + self.mlp(self.ln2(x))
         return x
 
     @staticmethod
     def _lookahead_mask(d: int) -> torch.Tensor:
+        """Generate a lookahead attention mask for a given dimension."""
         mask = torch.triu(torch.ones(d, d), diagonal=1)
         mask[mask.bool()] = -float("inf")
         return mask
 
 
 class GPT2(L.LightningModule):
+    """
+    GPT2 language model.
+
+    Params:
+        config (GPT2Config): Hyperparameters for GPT2.
+    Returns:
+        None
+    """
+
     def __init__(self, config: GPT2Config) -> None:
         super().__init__()
         self.config = config
@@ -78,13 +107,13 @@ class GPT2(L.LightningModule):
         ]
 
         self.transformer = nn.ModuleDict(
-            dict(
-                tok_emb=nn.Embedding(config.vocab_size, config.embed_d),
-                pos_emb=nn.Embedding(config.window_size, config.embed_d),
-                dropout=nn.Dropout(config.emb_dropout),
-                blocks=nn.ModuleList(transformer_blocks),
-                ln=nn.LayerNorm(config.embed_d),
-            )
+            {
+                "tok_emb": nn.Embedding(config.vocab_size, config.embed_d),
+                "pos_emb": nn.Embedding(config.window_size, config.embed_d),
+                "dropout": nn.Dropout(config.emb_dropout),
+                "blocks": nn.ModuleList(transformer_blocks),
+                "ln": nn.LayerNorm(config.embed_d),
+            }
         )
         self.lm_head = nn.Linear(config.embed_d, config.vocab_size, bias=False)
 
@@ -93,7 +122,18 @@ class GPT2(L.LightningModule):
             if pn.endswith("mlp.2.weight"):
                 torch.nn.init.normal_(p, mean=0.0, std=0.02 / sqrt(2 * config.n_layers))
 
-    def _init_weights(self, module) -> None:
+    def _init_weights(self, module: nn.Module) -> None:
+        """
+        Initialise model weights with GPT2 defaults.
+
+        TODO: Test what difference this makes as cribbed from Karpathy.
+
+        Params:
+            module (nn.Module): Module to initialise.
+        Returns:
+            None
+        """
+
         if isinstance(module, nn.Linear):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
             if module.bias is not None:
@@ -110,8 +150,14 @@ class GPT2(L.LightningModule):
             torch.nn.init.ones_(module.weight)
 
     def configure_optimizers(self) -> torch.optim.AdamW:
-        decay = set()
+        """
+        Configure AdamW optimizer with some modules experiencing weight decay.
 
+        Returns:
+            torch.optim.AdamW: Configured optimizer.
+        """
+
+        decay = set()
         for mn, m in self.named_modules():
             if isinstance(m, (torch.nn.Linear, torch.nn.MultiheadAttention)):
                 for pn, _ in m.named_parameters():
@@ -134,11 +180,12 @@ class GPT2(L.LightningModule):
                 "weight_decay": 0.0,
             },
         ]
-        return torch.optim.AdamW(
-            optim_groups, lr=self.config.adam_lr, betas=self.config.adam_betas
-        )
+        return torch.optim.AdamW(optim_groups, lr=self.config.adam_lr, betas=self.config.adam_betas)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Model forward pass."""
+        # pylint: disable=arguments-differ
+
         _, t = x.size()
         pos = torch.arange(0, t, dtype=torch.long, device=x.device).unsqueeze(0)
         pos_emb = self.transformer.pos_emb(pos)
@@ -149,18 +196,23 @@ class GPT2(L.LightningModule):
         x = self.transformer.ln(x)
         return self.lm_head(x)
 
-    def training_step(
-        self, batch: torch.Tensor, batch_idx: torch.Tensor
-    ) -> torch.Tensor:
+    def training_step(self, batch: torch.Tensor, batch_idx: torch.Tensor) -> torch.Tensor:
+        """
+        Lightning training step configuration.
+
+        Params:
+            batch (torch.Tensor): Batch of training data.
+            batch_idx (torch.Tensor): Index of the batch (UNUSED).
+        """
+        # pylint: disable=arguments-differ
+
         _ = batch_idx
         y = batch[:, 1:]
-        y_hat = torch.zeros(
-            y.shape[0], 0, self.config.vocab_size, device=y.device
-        )
+        y_hat = torch.zeros(y.shape[0], 0, self.config.vocab_size, device=y.device)
 
         for i in range(1, batch.size(1)):
             start = i - self.config.window_size if i >= self.config.window_size else 0
-            x = batch[:, start : i]
+            x = batch[:, start:i]
             x = self.forward(x)
             x = x[:, -1:, :]
             y_hat = torch.cat((y_hat, x), dim=1)
@@ -168,7 +220,6 @@ class GPT2(L.LightningModule):
         loss = F.cross_entropy(y_hat.permute(0, 2, 1), y)
         self.log("train_loss", loss, prog_bar=True)
         return loss
-
 
     @torch.no_grad()
     def generate(
@@ -179,6 +230,18 @@ class GPT2(L.LightningModule):
         sample: bool = False,
         top_k: int | None = None,
     ) -> torch.Tensor:
+        """
+        Generate from a given tokenised input.
+
+        Params:
+            x (torch.Tensor): Tokenised input sequence.
+            max_tokens (int): Maximum number of tokens to generate.
+            t (float): Temperature parameter.
+            sample (bool): Sample from the distribution or take the largest probability.
+            top_k (int | None): Top-k sampling parameter.
+        """
+        # pylint: disable=too-many-arguments
+
         for _ in range(max_tokens):
             if x.size(1) <= self.config.window_size:
                 x_trunc = x
@@ -195,11 +258,11 @@ class GPT2(L.LightningModule):
             probs = F.softmax(logits, dim=-1)
 
             if sample:
-                next = torch.multinomial(probs, num_samples=1)
+                next_ = torch.multinomial(probs, num_samples=1)
             else:
-                _, next = torch.topk(probs, k=1, dim=-1)
+                _, next_ = torch.topk(probs, k=1, dim=-1)
 
-            x = torch.cat((x, next), dim=-1)
+            x = torch.cat((x, next_), dim=-1)
         return x
 
 

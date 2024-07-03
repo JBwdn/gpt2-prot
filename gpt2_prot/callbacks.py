@@ -1,20 +1,44 @@
-import torch
+"""
+Lightning callback to inspect model generations during training.
+"""
+
 import lightning as L
+import torch
 
 from gpt2_prot.data_module import AATokenizer, NTTokenizer
 
 
 class PreviewCallback(L.Callback):
-    def __init__(self, mode: str, prompt:str, length: int = 50) -> None:
+    """
+    Callback to print a preview of the models generation.
+
+    Params:
+        mode (str): Run in protein (aa) or nucleotide mode.
+        prompt (str): The prompt to generate from.
+        length (int): Sequence length to generate.
+    Returns:
+        None
+    """
+
+    # pylint: disable=too-few-public-methods
+
+    def __init__(self, mode: str, prompt: str, length: int = 50) -> None:
         super().__init__()
         assert mode in ["aa", "nt"]
         self.mode = mode
         self.prompt = prompt
         self.length = length
 
-    def on_train_epoch_end(
-        self, trainer: L.Trainer, pl_module: L.LightningModule
-    ) -> None:
+    def on_train_epoch_end(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
+        """
+        Logic to run the model generation, additionally logs to tensorboard.
+
+        Params:
+            trainer (L.Trainer): The trainer object.
+            pl_module (L.LightningModule): The LightningModule object.
+        Returns:
+            None
+        """
         pl_module.eval()
 
         if self.mode == "aa":
@@ -33,12 +57,10 @@ class PreviewCallback(L.Callback):
         tag = "Model generation previews:"
         message = ""
 
-        for i in range(len(generate_arguments)):
-            response_enc = pl_module.generate(
-                prompt_enc, self.length, **generate_arguments[i]
-            )
-            seq = tok.decode(response_enc.flatten().tolist())  # type: ignore
-            message += f"({generate_arguments[i]}): {seq}\n"
+        for args in generate_arguments:
+            response_enc = pl_module.generate(prompt_enc, self.length, **args)
+            seq = tok.decode(response_enc.flatten().tolist())
+            message += f"({args}): {seq}\n"
 
         tensorboard = pl_module.logger.experiment  # type: ignore
         tensorboard.add_text(tag, message, trainer.global_step)

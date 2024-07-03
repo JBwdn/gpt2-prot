@@ -1,3 +1,7 @@
+"""
+Character tokenizers and Lightning DataModule for handling biological datasets.
+"""
+
 import gzip
 from pathlib import Path
 
@@ -11,11 +15,23 @@ from tqdm import tqdm
 
 
 class CharTokenizer:
+    """
+    Simple single character tokenizer superclass.
+
+    Params:
+        vocab: List of characters to be used as the vocabulary.
+        pad_char: Character to use for padding.
+    Returns:
+        None
+    """
+
     def __init__(
         self,
         vocab: list[str],
         pad_char: str = "X",
     ) -> None:
+        # pylint: disable=unnecessary-comprehension
+
         assert pad_char in vocab
 
         self.vocab = vocab
@@ -31,26 +47,73 @@ class CharTokenizer:
         return len(self.vocab)
 
     def encode(self, data: str, pad_to: int | None = None) -> list[int]:
+        """
+        Call the encoder, padding and cropping to the desired length.
+
+        Params:
+            data (str): Sequence to encode.
+            pad_to (int): Length to pad or crop to.
+        Returns:
+            list[int]: Encoded sequence.
+        """
         if pad_to is not None:
             data = data[:pad_to]
             data += self.pad_char * (pad_to - len(data))
         return [self.encoder[c] for c in data]
 
     def decode(self, data: torch.Tensor) -> str:
+        """
+        Decode an encoded sequence.
+
+        TODO: Correct type hint.
+
+        Params:
+            data (torch.Tensor): Encoded sequence.
+        Returns:
+            str: Decoded sequence.
+        """
         return "".join([self.decoder[i] for i in data])
 
 
 class NTTokenizer(CharTokenizer):
+    """
+    DNA nucleotide character tokenizer.
+
+    Uses IUPAC nucleotide codes and `N` for padding. (Vocab size = 5)
+    """
+
     def __init__(self) -> None:
         super().__init__(list("ATCGN"), "N")
 
 
 class AATokenizer(CharTokenizer):
+    """
+    Protein amino acid character tokenizer.
+
+    Uses standard AAs, `ZBU` non-canonical AAs and `X` for padding.
+    (Vocab size = 26)
+    """
+
     def __init__(self) -> None:
         super().__init__(list("ACDEFGHIKLMNPQRSTVWYZBUX"), "X")
 
 
 class FastaDataset(Dataset):
+    """
+    Pytorch Dataset for loading, encoding and serving sequences from fasta files.
+
+    Params:
+        directory (Path): Path to a directory containing .fa or .fasta files (can be gzipped).
+        tokenizer (CharTokenizer): Tokenizer to use for encoding sequences.
+        max_len (int): Maximum sequence length to crop and pad sequences to.
+        limit (int): Maximum number of sequences to load.
+        bin_name (Path): Path to a binary file to where the encoded data is stored.
+    Returns:
+        None
+
+    Note: If `bin_name` already exists, it will be overwritten.
+    """
+
     def __init__(
         self,
         directory: Path,
@@ -59,20 +122,7 @@ class FastaDataset(Dataset):
         limit: int,
         bin_name: Path = Path("train.bin"),
     ) -> None:
-        """
-        Pytorch Dataset for loading, encoding and serving sequences from fasta files.
-
-        Params:
-            directory (Path): Path to a directory containing .fa or .fasta files (can be gzipped).
-            tokenizer (CharTokenizer): Tokenizer to use for encoding sequences.
-            max_len (int): Maximum sequence length to crop and pad sequences to.
-            limit (int): Maximum number of sequences to load.
-            bin_name (Path): Path to a binary file to where the encoded data is stored.
-        Returns:
-            None
-
-        Note: If `bin_name` already exists, it will be overwritten.
-        """
+        # pylint: disable=too-many-arguments,consider-using-with, unspecified-encoding
 
         print("Initializing FastaDataset...")
         self.files = (
@@ -123,11 +173,31 @@ class FastaDataset(Dataset):
         return torch.LongTensor(data)
 
     def cleanup(self) -> None:
+        """
+        Flush and remove the dataset mmap binary.
+        """
         self.data.flush()
         self.bin_name.unlink()
 
 
 class BioDataModule(L.LightningDataModule):
+    """
+    Pytorch Lightning DataModule for loading, encoding and serving sequences from fasta files.
+
+    Params:
+        mode (str): Either "nt" or "aa" to indicate the type of sequences to loadu
+        directory (Path): Path to a directory containing .fa or .fasta files (can be gzipped).
+        batch_size (int): Batch size to use for training.
+        max_seq_length (int): Maximum sequence length to crop and pad sequences to.
+        n_seq_limit (int): Maximum number of sequences to load.
+        loader_num_workers (int): Number of workers to use for the torch DataLoader.
+        downloads (list[tuple[str, str]]): List of tuples containing URLs and filenames to download.
+    Returns:
+        None
+    """
+
+    # pylint: disable=too-many-instance-attributes
+
     def __init__(
         self,
         mode: str,
@@ -136,8 +206,10 @@ class BioDataModule(L.LightningDataModule):
         max_seq_length: int,
         n_seq_limit: int,
         loader_num_workers: int,
-        downloads: list[tuple[str,str]] | None
+        downloads: list[tuple[str, str]] | None,
     ) -> None:
+
+        # pylint: disable=too-many-arguments
         super().__init__()
 
         assert mode in ["nt", "aa"]
@@ -159,7 +231,17 @@ class BioDataModule(L.LightningDataModule):
             self.directory, tokenizer, self.max_seq_length, self.n_seq_limit
         )
 
-    def download_dataset(self, url:str, filename:str, chunk_size:int=1024*10) -> None:
+    def download_dataset(self, url: str, filename: str, chunk_size: int = 1024 * 10) -> None:
+        """
+        Download a file from a URL to a local file.
+
+        Params:
+            url (str): URL to download from.
+            filename (str): Filename to save the file as.
+            chunk_size (int): Chunk size to use for downloading.
+        Returns:
+                None
+        """
         assert self.downloads is not None
         download_path = self.directory / filename
 
@@ -169,7 +251,7 @@ class BioDataModule(L.LightningDataModule):
 
         print(f"Downloading dataset from: {url}")
         self.directory.mkdir(exist_ok=True)
-        response = requests.get(url, stream=True)
+        response = requests.get(url, stream=True, timeout=None)
 
         size_mb = int(response.headers.get("content-length", 0)) / (1024**2)
         progress_bar = tqdm(total=int(size_mb), unit="MB")
@@ -180,6 +262,7 @@ class BioDataModule(L.LightningDataModule):
                     progress_bar.update(chunk_size / (1024**2))
 
     def train_dataloader(self) -> DataLoader:
+        """Return the DataLoader for training."""
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
@@ -187,6 +270,7 @@ class BioDataModule(L.LightningDataModule):
         )
 
     def teardown(self, stage: str | None = None) -> None:
+        """Call the cleanup method of the train dataset."""
         _ = stage
         self.train_dataset.cleanup()
 
