@@ -72,7 +72,7 @@ class CharTokenizer:
         Returns:
             str: Decoded sequence.
         """
-        return "".join([self.decoder[i] for i in data])
+        return "".join([self.decoder[int(i)] for i in data])
 
 
 class NTTokenizer(CharTokenizer):
