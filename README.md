@@ -1,18 +1,22 @@
 # gpt2-prot
 Train biological language models at single NT or AA resolution.
 
-## Todo
+## Roadmap
 
 - [x] Add config recipes for eg. foundation model training, specific protein modelling etc.
+- [x] Github actions for publishing the package to pypi
 - [ ] Docstrings etc.
 - [ ] Readme instructions
 - [ ] AWS spot instances demo
-- [ ] Github actions for publishing the package to pypi
 - [ ] Add inference mode
 
 ## Installation
 
-  Installation from pypi is on the way 
+```bash
+pip install gpt2_prot
+```
+
+### From source
 
 ```bash
 micromamba create -f environment.yml  # or conda etc.
@@ -30,7 +34,9 @@ pip install ".[test]"  # Install the package and all test dependencies
 ```bash
 gpt2-prot -h
 
-gpt2-prot fit --config recipes/cas9_analogues.yml  # Run the demo config for cas9 protein language modelling
+# Run the demo config for cas9 protein language modelling
+# Since this uses Lightning you can overwrite parameters from the config using the command line
+gpt2-prot fit --config recipes/cas9_analogues.yml --max_epochs 10  
 ```
 
 ## Development
@@ -43,8 +49,7 @@ pre-commit install
 
 # Run all the hooks:
 pre-commit run --all-files
+
+# Run unit tests:
+pytest
 ```
-
-### Running tests
-
-Pytest will find all files with the name "test_*.py" or "*_test.py", run simply by calling `pytest` from the repo root.
