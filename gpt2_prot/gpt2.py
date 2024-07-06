@@ -68,7 +68,7 @@ class TransformerBlock(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass through the transformer block."""
         q, k, v = self.qkv(self.ln1(x)).split(self.ln1.normalized_shape[0], dim=2)
-        mask = self._lookahead_mask(x.size(1)) if self.training else None
+        mask = self._lookahead_mask(x.size(1)).to(x.device) if self.training else None
         x_, _ = self.attn(q, k, v, attn_mask=mask, need_weights=False)
         x = x + x_
         x = x + self.mlp(self.ln2(x))
