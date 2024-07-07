@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gpt2_prot"
-version = "0.1"
+version = "0.2"
 description = "Single NT/AA resoultion biological GPT2 language modelling"
 readme = "README.md"
 requires-python = ">=3.10"
