@@ -3,12 +3,13 @@ Train biological language models at single NT or AA resolution.
 
 ## Roadmap
 
-- [x] Add config recipes for eg. foundation model training, specific protein modelling etc.
-- [x] Github actions for publishing the package to pypi
-- [ ] Docstrings etc.
 - [ ] Readme instructions
 - [ ] AWS spot instances demo
-- [ ] Add inference mode
+- [ ] Update recipe configs with new inference flags
+- [x] Add inference mode
+- [x] Add config recipes for eg. foundation model training, specific protein modelling etc.
+- [x] Github actions for publishing the package to pypi
+- [x] Docstrings etc.
 
 ## Installation
 
