@@ -30,6 +30,15 @@ class GPT2Config(NamedTuple):
     adam_betas: tuple[float, float]
 
 
+class PredictConfig(NamedTuple):
+    """Parameters for model generations."""
+
+    max_tokens: int = 100
+    sample: bool = False
+    t: float = 1.0
+    top_k: int | None = None
+
+
 class TransformerBlock(nn.Module):
     """
     Decoder only GPT2 transformer block.
@@ -68,7 +77,7 @@ class TransformerBlock(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass through the transformer block."""
         q, k, v = self.qkv(self.ln1(x)).split(self.ln1.normalized_shape[0], dim=2)
-        mask = self._lookahead_mask(x.size(1)) if self.training else None
+        mask = self._lookahead_mask(x.size(1)).to(x.device) if self.training else None
         x_, _ = self.attn(q, k, v, attn_mask=mask, need_weights=False)
         x = x + x_
         x = x + self.mlp(self.ln2(x))
@@ -95,6 +104,7 @@ class GPT2(L.LightningModule):
     def __init__(self, config: GPT2Config) -> None:
         super().__init__()
         self.config = config
+        self.predict_config: PredictConfig = PredictConfig()
 
         transformer_blocks = [
             TransformerBlock(
@@ -264,6 +274,24 @@ class GPT2(L.LightningModule):
 
             x = torch.cat((x, next_), dim=-1)
         return x
+
+    def predict_step(self, batch: torch.Tensor, batch_idx: torch.Tensor) -> torch.Tensor:
+        """
+        Lightning predict step configuration.
+
+        Params:
+            batch (torch.Tensor): Batch of training data.
+            batch_idx (torch.Tensor): Index of the batch (UNUSED).
+        """
+        _ = batch_idx
+
+        return self.generate(
+            batch,
+            max_tokens=self.predict_config.max_tokens,
+            t=self.predict_config.t,
+            sample=self.predict_config.sample,
+            top_k=self.predict_config.top_k,
+        )
 
 
 if __name__ == "__main__":

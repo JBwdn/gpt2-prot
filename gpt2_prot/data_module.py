@@ -180,6 +180,22 @@ class FastaDataset(Dataset):
         self.bin_name.unlink()
 
 
+class InferenceDataset(Dataset):
+    """Simple dataset to serve the model the tokenised prompt during inference."""
+
+    def __init__(self, prompt: str, tokenizer: CharTokenizer, n_samples) -> None:
+        self.prompt = prompt
+        self.tokenizer = tokenizer
+
+        self.x = [self.tokenizer(self.prompt)] * n_samples
+
+    def __len__(self) -> int:
+        return len(self.x)
+
+    def __getitem__(self, idx: int) -> torch.Tensor:
+        return torch.LongTensor(self.x[idx])
+
+
 class BioDataModule(L.LightningDataModule):
     """
     Pytorch Lightning DataModule for loading, encoding and serving sequences from fasta files.
@@ -207,6 +223,8 @@ class BioDataModule(L.LightningDataModule):
         n_seq_limit: int,
         loader_num_workers: int,
         downloads: list[tuple[str, str]] | None,
+        prompt: str | None = None,
+        n_samples: int | None = None,
     ) -> None:
 
         # pylint: disable=too-many-arguments
@@ -222,13 +240,17 @@ class BioDataModule(L.LightningDataModule):
         self.loader_num_workers = loader_num_workers
         self.downloads = downloads
 
+        # Predict mode settings:
+        self.prompt = prompt
+        self.n_samples = n_samples
+
         if self.downloads is not None:
             for url, filename in self.downloads:
                 self.download_dataset(url, filename)
 
-        tokenizer = NTTokenizer() if self.mode == "nt" else AATokenizer()
+        self.tokenizer = NTTokenizer() if self.mode == "nt" else AATokenizer()
         self.train_dataset = FastaDataset(
-            self.directory, tokenizer, self.max_seq_length, self.n_seq_limit
+            self.directory, self.tokenizer, self.max_seq_length, self.n_seq_limit
         )
 
     def download_dataset(self, url: str, filename: str, chunk_size: int = 1024 * 10) -> None:
@@ -273,6 +295,13 @@ class BioDataModule(L.LightningDataModule):
         """Call the cleanup method of the train dataset."""
         _ = stage
         self.train_dataset.cleanup()
+
+    def predict_dataloader(self) -> DataLoader:
+        """Return the DataLoader for inference."""
+        assert self.prompt is not None
+
+        dataset = InferenceDataset(self.prompt, self.tokenizer, self.n_samples)
+        return DataLoader(dataset, batch_size=1, num_workers=self.loader_num_workers)
 
 
 if __name__ == "__main__":

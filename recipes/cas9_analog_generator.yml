@@ -21,14 +21,22 @@ trainer:
         mode: "aa"
         prompt: "M"
         length: 75
+    - class_path: FastaInferenceWriter
+      init_args:
+        mode: "aa"
+        output_file: "predictions.fasta"
+        max_tokens: 100
+        t: 1.0
+        sample: true
+        top_k: 5
 
 model:
   config:
     vocab_size: 24
-    window_size: 512
-    n_layers: 4
-    n_heads: 4
-    embed_d: 512
+    window_size: 16
+    n_layers: 2
+    n_heads: 2
+    embed_d: 128
     emb_dropout: 0.1
     attn_dropout: 0.1
     res_dropout: 0.1
@@ -40,9 +48,11 @@ data:
   mode: "aa"
   directory: "seqs/"
   batch_size: 16
-  max_seq_length: 500
-  n_seq_limit: 5000
+  max_seq_length: 100
+  n_seq_limit: 500
   loader_num_workers: 2
   downloads: [
     ["https://rest.uniprot.org/uniprotkb/stream?compressed=true&format=fasta&query=%28gene%3Acas9%29", "uniprot_cas9.fasta.gz"]
   ]
+  prompt: "M"
+  n_samples: 100
