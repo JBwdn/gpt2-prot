@@ -9,6 +9,7 @@ import lightning as L
 import torch
 from torch import nn
 from torch.nn import functional as F
+from torcheval.metrics.functional.text import perplexity
 
 
 class GPT2Config(NamedTuple):
@@ -228,7 +229,10 @@ class GPT2(L.LightningModule):
             y_hat = torch.cat((y_hat, x), dim=1)
 
         loss = F.cross_entropy(y_hat.permute(0, 2, 1), y)
-        self.log("train_loss", loss, prog_bar=True)
+        perp = perplexity(y_hat, y)
+        self.log("loss", loss, prog_bar=True)
+        self.log("perplexity", perp, prog_bar=True)
+
         return loss
 
     @torch.no_grad()

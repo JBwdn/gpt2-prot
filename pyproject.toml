@@ -16,6 +16,7 @@ dependencies = [
     "requests",
     "tensorboard",
     "torch",
+    "torcheval",
     "tqdm",
 ]
 dynamic = []
