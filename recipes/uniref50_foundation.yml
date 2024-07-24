@@ -21,6 +21,14 @@ trainer:
         mode: "aa"
         prompt: "M"
         length: 75
+    - class_path: FastaInferenceWriter
+      init_args:
+        mode: "aa"
+        output_file: "predictions.fasta"
+        max_tokens: 100
+        t: 1.0
+        sample: true
+        top_k: 5
 
 model:
   config:
@@ -43,6 +51,8 @@ data:
   max_seq_length: 1000
   n_seq_limit: 1000000000
   loader_num_workers: 2
+  prompt: "M"
+  n_samples: 100
   downloads: [
     "https://ftp.uniprot.org/pub/databases/uniprot/uniref/uniref50/uniref50.fasta.gz", "uniref50.fasta.gz"]
   ]

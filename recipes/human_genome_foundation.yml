@@ -21,6 +21,14 @@ trainer:
         mode: "nt"
         prompt: "ATG"
         length: 75
+    - class_path: FastaInferenceWriter
+      init_args:
+        mode: "nt"
+        output_file: "predictions.fasta"
+        max_tokens: 10000
+        t: 1.0
+        sample: true
+        top_k: 5
 
 model:
   config:
@@ -43,6 +51,8 @@ data:
   max_seq_length: 10000
   n_seq_limit: 1000
   loader_num_workers: 2
+  prompt: "ATG"
+  n_samples: 1
   downloads: [
     ["https://hgdownload.soe.ucsc.edu/goldenPath/hg38/chromosomes/chr1.fa.gz", "chr1.fa.gz"],
     ["https://hgdownload.soe.ucsc.edu/goldenPath/hg38/chromosomes/chr2.fa.gz", "chr2.fa.gz"]
