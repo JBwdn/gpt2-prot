@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gpt2_prot"
-version = "0.2"
+version = "0.3"
 description = "Single NT/AA resoultion biological GPT2 language modelling"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -12,7 +12,7 @@ dependencies = [
     "biopython",
     "jsonargparse[signatures]>=4.27.7",
     "lightning",
-    "numpy",
+    "numpy<2.0",
     "requests",
     "tensorboard",
     "torch",

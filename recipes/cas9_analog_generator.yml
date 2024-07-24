@@ -47,12 +47,13 @@ model:
 data:
   mode: "aa"
   directory: "seqs/"
-  batch_size: 16
-  max_seq_length: 100
-  n_seq_limit: 500
+  batch_size: 1
+  max_seq_length: 100  # Only use the first 100 AAs
+  n_seq_limit: 500  # Only use a few sequences
   loader_num_workers: 2
   downloads: [
     ["https://rest.uniprot.org/uniprotkb/stream?compressed=true&format=fasta&query=%28gene%3Acas9%29", "uniprot_cas9.fasta.gz"]
   ]
   prompt: "M"
   n_samples: 100
+
