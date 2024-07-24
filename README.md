@@ -9,6 +9,14 @@ This is a simple framework for training DNA or protein language models using an 
 - Supports protein and DNA modelling out of the box
 - Underlying torch dataset can download datasets (eg. from Uniprot or NCBI) and caches encoded data into a memory mapped array for handling large numbers of sequences
 
+## Recipes
+
+1. [Cas9 analogue generator](recipes/cas9_analog_generator.yml)
+2. [Human genome foundation model](recipes/human_genome_foundation.yml)
+3. [Uniref50 protein foundation model](recipes/uniref50_foundation.yml)
+
+Note: These need to be fully tested and final model and data parameters will change.
+
 ## Installation
 
 ```bash
